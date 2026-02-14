@@ -1,9 +1,143 @@
-<script type="module">
-    // 1. Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue, child, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Pickup & Dropoff</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem; 
+            margin-bottom: 1.5rem; 
+        }
+        .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .title { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.75rem; }
+        .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .btn { 
+            padding: 0.75rem 1.5rem; 
+            border-radius: 12px; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .btn-gray { background: #E5E7EB; color: #374151; }
+        
+        .info-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .alert-box { background: rgba(245, 158, 11, 0.1); border-left: 4px solid #F59E0B; padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; font-size: 0.9rem; color: #92400E; }
 
-    // 2. Your Provided Firebase Config
+        .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .month-title { font-size: 1.75rem; font-weight: 800; color: #1F2937; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.75rem; }
+        .day-header { text-align: center; font-weight: 700; color: #6B7280; padding: 0.75rem; font-size: 0.85rem; text-transform: uppercase; }
+        
+        .day-cell { 
+            min-height: 9rem; 
+            border: 2px solid #E5E7EB; 
+            border-radius: 16px; 
+            padding: 0.75rem; 
+            position: relative; 
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .day-cell.clickable { cursor: pointer; }
+        .day-cell.clickable:hover { border-color: #667eea; transform: translateY(-2px); }
+        .day-cell.holiday { background: #fff7ed; border-color: #FB923C; }
+        .day-cell.weekend { background: #F9FAFB; border-color: #E5E7EB; }
+        
+        .day-number { font-weight: 700; color: #1F2937; margin-bottom: 0.5rem; }
+        .assignment { 
+            border-radius: 8px; padding: 0.5rem; font-size: 0.8rem; margin-bottom: 0.5rem; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .remove-btn { cursor: pointer; font-size: 1.2rem; padding: 0 4px; font-weight: bold; }
+        .badge { position: absolute; top: 0.5rem; right: 0.5rem; }
+        .missing-dot { width: 10px; height: 10px; background: #EF4444; border-radius: 50%; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 50; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 24px; padding: 2rem; max-width: 28rem; width: 90%; }
+        
+        .form-group { margin-bottom: 1.25rem; }
+        .form-input { width: 100%; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 12px; }
+        .radio-group { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; }
+        
+        .people-list { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+        .person-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #f3f4f6; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .person-color { width: 12px; height: 12px; border-radius: 50%; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="glass-card">
+        <div class="header">
+            <div class="title">📅 School Pickup & Dropoff</div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.openSettings()">🔔 Settings</button>
+                <button class="btn btn-secondary" onclick="window.shareApp()">📤 Share</button>
+            </div>
+        </div>
+        <div class="info-box">
+            <strong>Real-Time Sync Active:</strong> Changes made here will instantly appear on all 5 devices.
+        </div>
+        <div class="alert-box">
+            <strong>⚠️ Note:</strong> Ensure your Firebase Database Rules are set to public for the sync to work.
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <div class="calendar-nav">
+            <button class="btn btn-gray" onclick="window.previousMonth()">← Previous</button>
+            <div class="month-title" id="monthTitle"></div>
+            <button class="btn btn-gray" onclick="window.nextMonth()">Next →</button>
+        </div>
+        <div class="calendar-grid" id="calendar"></div>
+        <div id="peopleSection"></div>
+    </div>
+</div>
+
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <h3 id="modalTitle" style="margin-bottom: 1rem;">Add Schedule</h3>
+        <div class="form-group">
+            <label style="font-weight: bold;">Type</label>
+            <div class="radio-group">
+                <label><input type="radio" name="scheduleType" value="dropoff" checked> Dropoff (8 AM)</label>
+                <label><input type="radio" name="scheduleType" value="pickup"> Pickup (3 PM)</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label style="font-weight: bold;">Name</label>
+            <input type="text" id="personName" class="form-input" placeholder="e.g. Sarah">
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn btn-primary" style="flex:1" onclick="window.addPerson()">Save</button>
+            <button class="btn btn-gray" style="flex:1" onclick="window.closeAddModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // 1. Firebase Config Integration
     const firebaseConfig = {
         apiKey: "AIzaSyCD-MH83cfM6gBx7FiuuIaYlaJj6EAfY4E",
         authDomain: "school-planner-3b04b.firebaseapp.com",
@@ -14,112 +148,97 @@
         appId: "1:765909014333:web:72e0cca49c85c2ef0e9754"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const dbRef = ref(db, 'school_calendar_data');
 
-    // --- App State ---
+    // 2. Local State
     let currentDate = new Date();
     let selectedDate = null;
     let schedule = {};
     let people = {};
 
     const NSW_HOLIDAYS_2026 = [
-        { start: '2026-01-01', end: '2026-01-29', name: 'Summer Holidays' },
-        { start: '2026-04-06', end: '2026-04-17', name: 'Autumn Holidays' },
-        { start: '2026-06-29', end: '2026-07-10', name: 'Winter Holidays' },
-        { start: '2026-09-21', end: '2026-10-02', name: 'Spring Holidays' },
-        { start: '2026-12-18', end: '2027-01-28', name: 'Summer Holidays' }
+        { start: '2026-01-01', end: '2026-01-29', name: 'Summer' },
+        { start: '2026-04-06', end: '2026-04-17', name: 'Autumn' },
+        { start: '2026-06-29', end: '2026-07-10', name: 'Winter' },
+        { start: '2026-09-21', end: '2026-10-02', name: 'Spring' },
+        { start: '2026-12-18', end: '2027-01-28', name: 'Summer' }
     ];
 
-    const PERSON_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#14B8A6', '#F97316'];
+    const COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
 
-    // 3. THE "SYNC ENGINE": Listen for any changes from the 5 users
+    // 3. Sync Logic (The "Magic")
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             schedule = data.schedule || {};
             people = data.people || {};
-            window.renderCalendar(); 
+            window.renderCalendar();
         }
     });
 
-    // 4. ACTION: Sync data back to the cloud
-    async function syncToFirebase() {
-        try {
-            await set(dbRef, { schedule, people });
-        } catch (error) {
-            console.error("Sync failed. Check your Firebase Rules!", error);
-            alert("Connection error. Could not sync change.");
-        }
+    async function sync() {
+        await set(dbRef, { schedule, people });
     }
 
-    // --- Attached to window for HTML Button Access ---
+    // 4. Global Functions (Attached to window)
     window.addPerson = async function() {
-        const nameInput = document.getElementById('personName');
-        const name = nameInput.value.trim();
+        const name = document.getElementById('personName').value.trim();
         if (!name || !selectedDate) return;
         
         const type = document.querySelector('input[name="scheduleType"]:checked').value;
-        
         if (!schedule[selectedDate]) schedule[selectedDate] = {};
         schedule[selectedDate][type] = name;
-        
+
         if (!people[name]) {
-            const usedColors = Object.values(people).map(p => p.color);
-            const availableColor = PERSON_COLORS.find(c => !usedColors.includes(c)) || PERSON_COLORS[0];
-            people[name] = { color: availableColor };
+            const used = Object.values(people).map(p => p.color);
+            people[name] = { color: COLORS.find(c => !used.includes(c)) || COLORS[0] };
         }
-        
-        await syncToFirebase();
+
+        await sync();
         window.closeAddModal();
-        nameInput.value = '';
     };
 
-    window.removePerson = async function(event, dateKey, type) {
-        event.stopPropagation();
-        if (schedule[dateKey]) {
-            delete schedule[dateKey][type];
-            if (Object.keys(schedule[dateKey]).length === 0) delete schedule[dateKey];
-            await syncToFirebase();
-        }
+    window.removePerson = async function(e, dateKey, type) {
+        e.stopPropagation();
+        delete schedule[dateKey][type];
+        if (Object.keys(schedule[dateKey]).length === 0) delete schedule[dateKey];
+        await sync();
     };
 
     window.renderCalendar = function() {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const monthTitle = document.getElementById('monthTitle');
-        if(monthTitle) monthTitle.textContent = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+        document.getElementById('monthTitle').textContent = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        const first = new Date(year, month, 1).getDay();
+        const days = new Date(year, month + 1, 0).getDate();
         let html = '';
+
         ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => html += `<div class="day-header">${d}</div>`);
-        for (let i = 0; i < firstDay; i++) html += '<div></div>';
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
+        for (let i = 0; i < first; i++) html += '<div></div>';
+
+        for (let d = 1; d <= days; d++) {
+            const date = new Date(year, month, d);
             const dateKey = date.toISOString().split('T')[0];
-            const daySchedule = schedule[dateKey] || {};
-            const isHol = NSW_HOLIDAYS_2026.some(h => dateKey >= h.start && dateKey <= h.end);
+            const daySched = schedule[dateKey] || {};
+            const isHol = NSW_HOLIDAYS_2026.find(h => dateKey >= h.start && dateKey <= h.end);
             const isWknd = date.getDay() === 0 || date.getDay() === 6;
             const isClickable = !isHol && !isWknd;
 
-            let classes = `day-cell ${isClickable ? 'clickable' : ''} ${isHol ? 'holiday' : ''} ${isWknd ? 'weekend' : ''}`;
-            
             html += `
-                <div class="${classes}" onclick="${isClickable ? `window.openAddModal('${dateKey}')` : ''}">
-                    <div class="day-number">${day}</div>
-                    ${isClickable && (!daySchedule.dropoff || !daySchedule.pickup) ? '<div class="badge"><div class="missing-dot"></div></div>' : ''}
-                    ${Object.entries(daySchedule).map(([type, pName]) => {
-                        const color = people[pName]?.color || '#667eea';
-                        return `
-                            <div class="assignment" style="background: ${color}20; border-left: 3px solid ${color}">
-                                <span style="color: ${color}; font-weight:bold">${type === 'dropoff' ? '↓' : '↑'} ${pName}</span>
-                                <span class="remove-btn" onclick="window.removePerson(event, '${dateKey}', '${type}')">✕</span>
-                            </div>`;
+                <div class="day-cell ${isClickable ? 'clickable' : ''} ${isHol ? 'holiday' : ''} ${isWknd ? 'weekend' : ''}" 
+                     onclick="${isClickable ? `window.openAddModal('${dateKey}')` : ''}">
+                    <div class="day-number">${d}</div>
+                    ${isHol ? `<div style="font-size:0.7rem; color:#C2410C">${isHol.name}</div>` : ''}
+                    ${isClickable && (!daySched.dropoff || !daySched.pickup) ? '<div class="badge"><div class="missing-dot"></div></div>' : ''}
+                    ${Object.entries(daySched).map(([type, name]) => {
+                        const col = people[name]?.color || '#667eea';
+                        return `<div class="assignment" style="background:${col}15; border-left:3px solid ${col}">
+                                    <span style="color:${col}; font-weight:700">${type === 'dropoff' ? '↓' : '↑'} ${name}</span>
+                                    <span class="remove-btn" onclick="window.removePerson(event, '${dateKey}', '${type}')">×</span>
+                                </div>`;
                     }).join('')}
                 </div>`;
         }
@@ -128,25 +247,22 @@
     };
 
     window.renderPeopleList = function() {
-        const container = document.getElementById('peopleSection');
-        if (!container) return;
-        if (Object.keys(people).length === 0) return container.innerHTML = '';
-        let html = '<h4 style="margin: 1.5rem 0 1rem; font-weight:700;">Active Drivers</h4><div class="people-list">';
-        Object.keys(people).forEach(name => {
-            html += `<div class="person-item"><div class="person-color" style="background: ${people[name].color}"></div>${name}</div>`;
-        });
-        container.innerHTML = html + '</div>';
+        const sect = document.getElementById('peopleSection');
+        const names = Object.keys(people);
+        if (names.length === 0) return sect.innerHTML = '';
+        sect.innerHTML = `<h4 style="margin:1.5rem 0 1rem">Participants</h4><div class="people-list">` + 
+            names.map(n => `<div class="person-item"><div class="person-color" style="background:${people[n].color}"></div>${n}</div>`).join('') + `</div>`;
     };
 
-    window.previousMonth = () => { currentDate.setMonth(currentDate.getMonth() - 1); window.renderCalendar(); };
+    window.openAddModal = (dk) => { selectedDate = dk; document.getElementById('addModal').classList.add('show'); };
+    window.closeAddModal = () => { document.getElementById('addModal').classList.remove('show'); };
     window.nextMonth = () => { currentDate.setMonth(currentDate.getMonth() + 1); window.renderCalendar(); };
-    window.openAddModal = (dateKey) => { 
-        selectedDate = dateKey; 
-        document.getElementById('modalTitle').textContent = `Schedule: ${dateKey}`;
-        document.getElementById('addModal').classList.add('show'); 
-    };
-    window.closeAddModal = () => document.getElementById('addModal').classList.remove('show');
+    window.previousMonth = () => { currentDate.setMonth(currentDate.getMonth() - 1); window.renderCalendar(); };
+    window.shareApp = () => { navigator.clipboard.writeText(window.location.href); alert("Link copied to clipboard!"); };
+    window.openSettings = () => { alert("Settings saved locally for now."); };
 
-    // Init
     window.renderCalendar();
 </script>
+
+</body>
+</html>
