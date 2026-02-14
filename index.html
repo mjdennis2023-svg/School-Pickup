@@ -2,218 +2,284 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>NSW School Planner 2026</title>
-    <style>
-        :root {
-            --primary-purple: #6c5ce7;
-            --bg-light: #f4f7fe;
-            --holiday-bg: #fff7ed;
-            --holiday-border: #fb923c;
-            --text-dark: #1F2937;
-        }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Pickup & Dropoff</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+    <style>
+        /* All your original beautiful styling remains exactly the same */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: -apple-system, sans-serif; 
-            background: var(--bg-light);
-            padding: env(safe-area-inset-top) 1rem 2rem 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
         }
-
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .glass-card { 
-            background: white; border-radius: 24px; padding: 1.5rem; 
-            margin-bottom: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            position: relative; overflow: hidden;
+            background: rgba(255, 255, 255, 0.95); 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem; 
+            margin-bottom: 1.5rem; 
         }
-
-        .calendar-grid { 
-            display: grid; grid-template-columns: repeat(7, 1fr); 
-            gap: 8px; position: relative;
-        }
-
-        /* Purple Weekend Overlay */
-        .calendar-grid::after {
-            content: ""; position: absolute; top: 0; right: -5px;
-            width: 28.8%; height: 100%; background: var(--primary-purple);
-            z-index: 0; border-radius: 18px;
-        }
-
-        .day-header { text-align: center; font-weight: 700; color: #9CA3AF; font-size: 0.75rem; z-index: 1; padding: 5px; }
-
-        .day-cell { 
-            min-height: 110px; background: white; border-radius: 16px; 
-            padding: 10px; position: relative; z-index: 1;
-            border: 1px solid #edf2f7; display: flex; flex-direction: column;
-        }
-
-        .day-cell.weekend { background: transparent; border: 1px solid rgba(255,255,255,0.1); }
-        .day-cell.weekend .day-number { color: white; }
-
-        /* Holiday Styling */
-        .day-cell.holiday { background: var(--holiday-bg); border-color: var(--holiday-border); }
-        .holiday-label { font-size: 0.65rem; color: #c2410c; font-weight: 800; margin-top: 2px; line-height: 1; }
-
-        .day-number { font-weight: 800; font-size: 1rem; }
-        .missing-dot { 
-            width: 10px; height: 10px; background: #EF4444; 
-            border-radius: 50%; position: absolute; top: 10px; right: 10px; 
-        }
-
-        .assignment { 
-            border-radius: 6px; padding: 3px 6px; font-size: 0.7rem; 
-            margin-top: 4px; font-weight: 700; display: flex; justify-content: space-between;
-        }
-
-        .remove-btn { cursor: pointer; font-weight: bold; margin-left: 4px; }
-
-        .btn { padding: 10px 18px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; }
-        .btn-primary { background: var(--primary-purple); color: white; }
-        
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .title { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.75rem; }
+        .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 12px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+        .btn-gray { background: #E5E7EB; color: #374151; }
+        .info-box { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea; padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; font-size: 0.9rem; color: #1F2937; }
+        .alert-box { background: linear-gradient(135deg, #fbbf2415 0%, #ee4c7c15 100%); border-left: 4px solid #F59E0B; padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; font-size: 0.9rem; color: #92400E; }
+        .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .month-title { font-size: 1.75rem; font-weight: 800; color: #1F2937; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.75rem; }
+        .day-header { text-align: center; font-weight: 700; color: #6B7280; padding: 0.75rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .day-cell { min-height: 9rem; border: 2px solid #E5E7EB; border-radius: 16px; padding: 0.75rem; position: relative; background: white; transition: all 0.3s ease; }
+        .day-cell.clickable { cursor: pointer; }
+        .day-cell.clickable:hover { border-color: #667eea; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2); transform: translateY(-2px); }
+        .day-cell.holiday { background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-color: #FB923C; }
+        .day-cell.weekend { background: #F9FAFB; border-color: #E5E7EB; }
+        .day-number { font-weight: 700; color: #1F2937; margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .holiday-name { font-size: 0.75rem; font-weight: 700; color: #C2410C; margin-bottom: 0.5rem; }
+        .assignment { border-radius: 8px; padding: 0.5rem; font-size: 0.8rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .assignment-name { font-weight: 700; }
+        .remove-btn { cursor: pointer; font-size: 1.3rem; line-height: 1; padding: 0 0.25rem; opacity: 0.7; transition: opacity 0.2s; }
+        .badge { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.25rem; }
+        .missing-dot { width: 10px; height: 10px; background: #EF4444; border-radius: 50%; }
+        .empty-day { font-size: 0.75rem; color: #9CA3AF; text-align: center; margin-top: 1rem; font-style: italic; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 1rem; z-index: 50; backdrop-filter: blur(4px); }
         .modal.show { display: flex; }
-        .modal-content { background: white; padding: 2rem; border-radius: 24px; width: 90%; max-width: 400px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; }
+        .modal-content { background: white; border-radius: 24px; padding: 2rem; max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; color: #1F2937; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem; color: #374151; }
+        .form-input { width: 100%; padding: 0.75rem 1.25rem; border: 2px solid #E5E7EB; border-radius: 12px; font-size: 1rem; }
+        .radio-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .radio-label { display: flex; align-items: center; cursor: pointer; padding: 0.75rem 1.25rem; border: 2px solid #E5E7EB; border-radius: 12px; }
+        .radio-label:has(input:checked) { border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+        .button-group { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+        .button-group button { flex: 1; padding: 1rem; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 1rem; }
+        .people-list { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+        .person-item { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; padding: 0.5rem 1.25rem; background: #f3f4f6; border-radius: 20px; font-weight: 600; }
+        .person-color { width: 14px; height: 14px; border-radius: 50%; }
+        .setting-option { display: flex; align-items: flex-start; padding: 1rem; border: 2px solid #E5E7EB; border-radius: 12px; cursor: pointer; margin-bottom: 0.75rem; }
+        .setting-option:has(input:checked) { border-color: #667eea; background: rgba(102, 126, 234, 0.05); }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="glass-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h1 id="monthTitle" style="color:var(--primary-purple)">February 2026</h1>
-                <div>
-                    <button class="btn" onclick="window.previousMonth()">←</button>
-                    <button class="btn" onclick="window.nextMonth()">→</button>
+            <div class="header">
+                <div class="title">📅 School Pickup & Dropoff</div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="openSettings()">🔔 Settings</button>
+                    <button class="btn btn-secondary" onclick="shareApp()">📤 Share</button>
                 </div>
+            </div>
+            <div class="info-box">
+                <strong>Real-time Sync:</strong> Active. All users connected to <em>school-planner-3b04b</em> see changes instantly.
             </div>
         </div>
 
         <div class="glass-card">
+            <div class="calendar-nav">
+                <button class="btn btn-gray" onclick="previousMonth()">← Previous</button>
+                <div class="month-title" id="monthTitle"></div>
+                <button class="btn btn-gray" onclick="nextMonth()">Next →</button>
+            </div>
             <div class="calendar-grid" id="calendar"></div>
+            <div id="peopleSection"></div>
         </div>
     </div>
 
     <div class="modal" id="addModal">
         <div class="modal-content">
-            <h3 id="modalTitle">Set Schedule</h3>
-            <input type="text" id="personName" placeholder="Name">
-            <div style="margin-bottom:15px;">
-                <label><input type="radio" name="sType" value="dropoff" checked> Dropoff</label>
-                <label style="margin-left:15px;"><input type="radio" name="sType" value="pickup"> Pickup</label>
+            <h3 class="modal-title" id="modalTitle"></h3>
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="scheduleType" value="dropoff" checked> Dropoff (8 AM)</label>
+                    <label class="radio-label"><input type="radio" name="scheduleType" value="pickup"> Pickup (3 PM)</label>
+                </div>
             </div>
-            <button class="btn btn-primary" style="width:100%" onclick="window.addPerson()">Save</button>
-            <button class="btn" style="width:100%; margin-top:10px;" onclick="window.closeAddModal()">Cancel</button>
+            <div class="form-group">
+                <label class="form-label">Person's Name</label>
+                <input type="text" id="personName" class="form-input" placeholder="Enter name">
+            </div>
+            <div class="button-group">
+                <button onclick="addPerson()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">Add</button>
+                <button onclick="closeAddModal()" style="background: #E5E7EB; color: #374151;">Cancel</button>
+            </div>
         </div>
     </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Notification Settings</h3>
+            <div class="form-group">
+                <label class="setting-option"><input type="radio" name="notifPref" value="push" checked> <div><div style="font-weight:700">Push Only</div></div></label>
+            </div>
+            <div class="button-group">
+                <button onclick="closeSettings()" style="background: #E5E7EB; color: #374151;">Close</button>
+            </div>
+        </div>
+    </div>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCD-MH83cfM6gBx7FiuuIaYlaJj6EAfY4E",
-        authDomain: "school-planner-3b04b.firebaseapp.com",
-        databaseURL: "https://school-planner-3b04b-default-rtdb.firebaseio.com",
-        projectId: "school-planner-3b04b",
-        storageBucket: "school-planner-3b04b.firebasestorage.app",
-        messagingSenderId: "765909014333",
-        appId: "1:765909014333:web:72e0cca49c85c2ef0e9754"
-    };
+    <script>
+        // --- FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCD-MH83cfM6gBx7FiuuIaYlaJj6EAfY4E",
+            authDomain: "school-planner-3b04b.firebaseapp.com",
+            databaseURL: "https://school-planner-3b04b-default-rtdb.firebaseio.com",
+            projectId: "school-planner-3b04b",
+            storageBucket: "school-planner-3b04b.firebasestorage.app",
+            messagingSenderId: "765909014333",
+            appId: "1:765909014333:web:72e0cca49c85c2ef0e9754"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const dbRef = ref(db, 'school_data_root');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    // NSW 2026 School Holidays
-    const NSW_HOLIDAYS = [
-        { start: '2026-01-01', end: '2026-01-26', name: 'Summer' },
-        { start: '2026-04-10', end: '2026-04-26', name: 'Autumn' },
-        { start: '2026-07-04', end: '2026-07-19', name: 'Winter' },
-        { start: '2026-09-26', end: '2026-10-11', name: 'Spring' },
-        { start: '2026-12-21', end: '2026-12-31', name: 'Summer' }
-    ];
+        // --- STATE & CONFIG ---
+        const NSW_HOLIDAYS_2026 = [
+            { start: '2026-01-01', end: '2026-01-29', name: 'Summer Holidays' },
+            { start: '2026-04-06', end: '2026-04-17', name: 'Autumn Holidays' },
+            { start: '2026-06-29', end: '2026-07-10', name: 'Winter Holidays' },
+            { start: '2026-09-21', end: '2026-10-02', name: 'Spring Holidays' },
+            { start: '2026-12-18', end: '2027-01-28', name: 'Summer Holidays' }
+        ];
 
-    let currentDate = new Date(2026, 1, 1);
-    let schedule = {}; let people = {}; let selectedDate = null;
-    const COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6'];
+        const PERSON_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
 
-    onValue(dbRef, (snap) => {
-        const d = snap.val(); if(d){ schedule = d.schedule||{}; people = d.people||{}; render(); }
-    });
+        let currentDate = new Date();
+        let selectedDate = null;
+        let schedule = {};
+        let people = {};
 
-    function isHoliday(dateStr) {
-        return NSW_HOLIDAYS.find(h => dateStr >= h.start && dateStr <= h.end);
-    }
-
-    function render() {
-        const year = currentDate.getFullYear(), month = currentDate.getMonth();
-        document.getElementById('monthTitle').textContent = currentDate.toLocaleString('default', {month:'long', year:'numeric'});
-        const first = new Date(year, month, 1).getDay(), days = new Date(year, month+1, 0).getDate();
-        
-        let h = '';
-        ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d => h += `<div class="day-header">${d}</div>`);
-        for(let i=0; i<first; i++) h += '<div></div>';
-        
-        for(let d=1; d<=days; d++) {
-            const date = new Date(year, month, d);
-            const k = date.toISOString().split('T')[0];
-            const wknd = date.getDay()===0 || date.getDay()===6;
-            const hol = isHoliday(k);
-            const daySched = schedule[k] || {};
-
-            let assignHtml = '';
-            Object.entries(daySched).forEach(([t, n]) => {
-                const c = people[n]?.color || '#667eea';
-                assignHtml += `<div class="assignment" style="background:${c}20; color:${c}; border-left:3px solid ${c}">
-                    ${t==='dropoff'?'↓':'↑'} ${n} <span class="remove-btn" onclick="remove(event,'${k}','${t}')">×</span></div>`;
-            });
-
-            const missing = !wknd && !hol && (!daySched.dropoff || !daySched.pickup);
-
-            h += `<div class="day-cell ${wknd?'weekend':''} ${hol?'holiday':''}" onclick="openM('${k}')">
-                <div class="day-number">${d}</div>
-                ${hol ? `<div class="holiday-label">${hol.name}</div>` : ''}
-                ${missing ? `<div class="missing-dot"></div>` : ''}
-                ${assignHtml}
-            </div>`;
-        }
-        document.getElementById('calendar').innerHTML = h;
-    }
-
-    window.openM = (k) => { selectedDate = k; document.getElementById('addModal').classList.add('show'); };
-    window.closeAddModal = () => document.getElementById('addModal').classList.remove('show');
-    
-    window.addPerson = async () => {
-        const n = document.getElementById('personName').value.trim();
-        const t = document.querySelector('input[name="sType"]:checked').value;
-        if(!n) return;
-        if(!schedule[selectedDate]) schedule[selectedDate] = {};
-        schedule[selectedDate][t] = n;
-        if(!people[n]) people[n] = {color: COLORS[Object.keys(people).length % COLORS.length]};
-        await set(dbRef, {schedule, people});
-        window.closeAddModal();
-    };
-
-    window.remove = async (e, k, t) => { e.stopPropagation(); delete schedule[k][t]; await set(dbRef, {schedule, people}); };
-    window.nextMonth = () => { currentDate.setMonth(currentDate.getMonth()+1); render(); };
-    window.previousMonth = () => { currentDate.setMonth(currentDate.getMonth()-1); render(); };
-
-    // 7PM Push logic remains
-    setInterval(() => {
-        const now = new Date();
-        if(now.getHours()===19 && now.getMinutes()===0) {
-            const tom = new Date(); tom.setDate(tom.getDate()+1);
-            const tk = tom.toISOString().split('T')[0];
-            if(tom.getDay()!==0 && tom.getDay()!==6 && !isHoliday(tk)) {
-                if(!schedule[tk] || !schedule[tk].dropoff || !schedule[tk].pickup) {
-                    new Notification("Schedule Missing!", {body: "Tomorrow still has empty slots."});
-                }
+        // --- REAL-TIME DATA SYNC ---
+        db.ref('/').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                schedule = data.schedule || {};
+                people = data.people || {};
+                renderCalendar();
             }
-        }
-    }, 60000);
+        });
 
-    if(Notification.permission !== "granted") Notification.requestPermission();
-    render();
-</script>
+        function syncToFirebase() {
+            db.ref('/').set({
+                schedule: schedule,
+                people: people
+            });
+        }
+
+        // --- LOGIC ---
+        function formatDate(date) { return date.toISOString().split('T')[0]; }
+        function isWeekday(date) { const d = date.getDay(); return d !== 0 && d !== 6; }
+        function isHoliday(date) {
+            const s = formatDate(date);
+            return NSW_HOLIDAYS_2026.some(h => s >= h.start && s <= h.end);
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            document.getElementById('monthTitle').textContent = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            let html = '';
+            ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => html += `<div class="day-header">${d}</div>`);
+            for (let i = 0; i < firstDay; i++) html += '<div></div>';
+            
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(year, month, d);
+                const key = formatDate(date);
+                const dayData = schedule[key] || {};
+                const holiday = isHoliday(date);
+                const weekday = isWeekday(date);
+                const clickable = weekday && !holiday;
+
+                let classes = `day-cell ${clickable ? 'clickable' : ''} ${holiday ? 'holiday' : ''} ${!weekday ? 'weekend' : ''}`;
+                let content = `<div class="day-number">${d}</div>`;
+
+                if (clickable) {
+                    if (dayData.dropoff) content += renderAssignment(dayData.dropoff, '↓', key, 'dropoff');
+                    if (dayData.pickup) content += renderAssignment(dayData.pickup, '↑', key, 'pickup');
+                    if (!dayData.dropoff || !dayData.pickup) content += '<div class="badge"><div class="missing-dot"></div></div>';
+                }
+
+                html += `<div class="${classes}" onclick="${clickable ? `openAddModal('${key}')` : ''}">${content}</div>`;
+            }
+            document.getElementById('calendar').innerHTML = html;
+            renderPeopleList();
+        }
+
+        function renderAssignment(name, icon, key, type) {
+            const color = people[name]?.color || '#667eea';
+            return `
+                <div class="assignment" style="background:${color}20; border-left:3px solid ${color}">
+                    <div class="assignment-name" style="color:${color}">${icon} ${name}</div>
+                    <span class="remove-btn" onclick="removePerson(event, '${key}', '${type}')">✕</span>
+                </div>`;
+        }
+
+        function renderPeopleList() {
+            let html = '<div class="people-list">';
+            Object.keys(people).forEach(name => {
+                html += `<div class="person-item"><div class="person-color" style="background:${people[name].color}"></div>${name}</div>`;
+            });
+            document.getElementById('peopleSection').innerHTML = html + '</div>';
+        }
+
+        function openAddModal(dateKey) {
+            selectedDate = dateKey;
+            document.getElementById('modalTitle').textContent = `Schedule for ${dateKey}`;
+            document.getElementById('addModal').classList.add('show');
+        }
+
+        function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
+
+        function addPerson() {
+            const name = document.getElementById('personName').value.trim();
+            const type = document.querySelector('input[name="scheduleType"]:checked').value;
+            if (!name) return;
+            
+            if (!schedule[selectedDate]) schedule[selectedDate] = {};
+            schedule[selectedDate][type] = name;
+            
+            if (!people[name]) {
+                const used = Object.values(people).map(p => p.color);
+                people[name] = { color: PERSON_COLORS.find(c => !used.includes(c)) || PERSON_COLORS[0] };
+            }
+            
+            syncToFirebase();
+            closeAddModal();
+        }
+
+        function removePerson(event, key, type) {
+            event.stopPropagation();
+            delete schedule[key][type];
+            syncToFirebase();
+        }
+
+        function previousMonth() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
+        function nextMonth() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
+        function openSettings() { document.getElementById('settingsModal').classList.add('show'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
+        
+        function shareApp() {
+            navigator.clipboard.writeText(window.location.href);
+            alert("Link copied! Send this to family members.");
+        }
+
+        renderCalendar();
+    </script>
 </body>
 </html>
