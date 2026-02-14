@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -19,108 +19,98 @@
         .container { max-width: 1200px; margin: 0 auto; width: 100%; }
         .glass-card { 
             background: rgba(255, 255, 255, 0.95); 
-            border-radius: 20px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border-radius: 24px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
             backdrop-filter: blur(10px);
             padding: 1.25rem;
             margin-bottom: 1rem; 
         }
         .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
-        .title { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: flex; align-items: center; gap: 0.5rem; }
-        .btn-group { display: flex; gap: 0.5rem; }
-        .btn { padding: 0.6rem 1rem; border-radius: 10px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.3s ease; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .btn-secondary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
-        .btn-gray { background: #E5E7EB; color: #374151; }
-        .info-box { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; font-size: 0.85rem; color: #1F2937; }
+        .title { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
+        /* Person Legend & Highlighting */
+        .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; padding: 10px; background: #f9fafb; border-radius: 12px; }
+        .legend-item { 
+            padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; 
+            cursor: pointer; border: 2px solid transparent; transition: 0.2s;
+        }
+        .legend-item.active { border-color: #000; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        /* Calendar UI */
         .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .month-title { font-size: 1.4rem; font-weight: 800; color: #1F2937; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; width: 100%; }
+        .day-header { text-align: center; font-weight: 700; color: #6B7280; padding: 0.5rem 0; font-size: 0.75rem; text-transform: uppercase; }
         
-        .calendar-grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 0.4rem; 
-            width: 100%;
-        }
-        .day-header { text-align: center; font-weight: 700; color: #6B7280; padding: 0.5rem 0; font-size: 0.7rem; text-transform: uppercase; }
         .day-cell { 
-            min-height: 7.5rem; 
-            border: 2px solid #E5E7EB; 
-            border-radius: 12px; 
-            padding: 0.4rem; 
-            position: relative; 
-            background: white;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            min-height: 9.5rem; border: 2px solid #E5E7EB; border-radius: 14px; 
+            padding: 0.5rem; position: relative; background: white; transition: 0.2s;
+            display: flex; flex-direction: column; gap: 4px;
         }
-        .day-cell.clickable { cursor: pointer; }
-        .day-number { font-weight: 700; color: #1F2937; margin-bottom: 0.3rem; font-size: 1rem; }
+        .day-cell.dimmed { opacity: 0.3; filter: grayscale(0.5); }
+        .day-cell.highlighted { border-color: #667eea; box-shadow: 0 0 15px rgba(102, 126, 234, 0.4); z-index: 2; }
         
-        .assignment { border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; margin-bottom: 0.3rem; display: flex; justify-content: space-between; align-items: center; }
-        .assignment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .remove-btn { cursor: pointer; font-size: 1rem; padding-left: 2px; }
-        
-        .badge { position: absolute; top: 0.4rem; right: 0.4rem; }
-        .missing-dot { width: 8px; height: 8px; background: #EF4444; border-radius: 50%; box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+        .day-number { font-weight: 800; color: #1F2937; margin-bottom: 4px; font-size: 1.1rem; }
+        .assignment { 
+            border-radius: 8px; padding: 6px; font-size: 0.75rem; 
+            display: flex; flex-direction: column; border-left: 3px solid;
+        }
+        .name-label { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge { position: absolute; top: 0.5rem; right: 0.5rem; }
+        .missing-dot { width: 10px; height: 10px; background: #EF4444; border-radius: 50%; box-shadow: 0 0 5px rgba(239,68,68,0.6); }
 
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 1rem; z-index: 100; backdrop-filter: blur(4px); }
+        /* Modal */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 1rem; z-index: 100; backdrop-filter: blur(8px); }
         .modal.show { display: flex; }
-        .modal-content { background: white; border-radius: 20px; padding: 1.5rem; width: 100%; max-width: 350px; }
-        .form-group { margin-bottom: 1rem; }
-        .form-input { width: 100%; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 10px; font-size: 1rem; }
-        .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
-        .radio-label { display: flex; align-items: center; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 10px; font-size: 0.9rem; }
-        .radio-label input { margin-right: 0.5rem; }
+        .modal-content { background: white; border-radius: 24px; padding: 1.5rem; width: 100%; max-width: 380px; }
+        .current-status { background: #F3F4F6; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; }
+        .status-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #E5E7EB; }
+        .btn { padding: 0.75rem 1.25rem; border-radius: 12px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 100%; margin-top: 10px; }
+        .form-input { width: 100%; padding: 0.8rem; border: 2px solid #E5E7EB; border-radius: 12px; margin-bottom: 10px; font-size: 1rem; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="glass-card">
             <div class="header">
-                <div class="title">📅 School Planner</div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="requestNotifPermission()">🔔</button>
-                    <button class="btn btn-secondary" onclick="shareApp()">📤 Share</button>
+                <div class="title">📅 Family Planner</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn" style="background:#eee" onclick="requestNotifPermission()">🔔</button>
+                    <button class="btn" style="background:#eee" onclick="shareApp()">📤</button>
                 </div>
             </div>
-            <div class="info-box">
-                <strong>Instant Sync:</strong> Changes update across all family devices. 7 PM reminders active for unassigned slots.
-            </div>
+            <div id="legendArea" class="legend">
+                </div>
         </div>
 
         <div class="glass-card">
             <div class="calendar-nav">
-                <button class="btn btn-gray" onclick="previousMonth()">←</button>
+                <button class="btn" style="background:#eee" onclick="previousMonth()">←</button>
                 <div class="month-title" id="monthTitle"></div>
-                <button class="btn btn-gray" onclick="nextMonth()">→</button>
+                <button class="btn" style="background:#eee" onclick="nextMonth()">→</button>
             </div>
             <div class="calendar-grid" id="calendar"></div>
         </div>
     </div>
 
-    <div class="modal" id="addModal">
+    <div class="modal" id="dayModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:1rem; color: #1F2937;">Assign Role</h3>
-            <div class="form-group">
-                <div class="radio-group">
-                    <label class="radio-label"><input type="radio" name="scheduleType" value="dropoff" checked> Dropoff (8 AM)</label>
-                    <label class="radio-label"><input type="radio" name="scheduleType" value="pickup"> Pickup (3 PM)</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <input type="text" id="personName" class="form-input" placeholder="Enter Name">
-            </div>
-            <div class="button-group" style="display:flex; gap:0.5rem;">
-                <button class="btn btn-primary" style="flex:1" onclick="addPerson()">Add</button>
-                <button class="btn btn-gray" style="flex:1" onclick="closeAddModal()">Cancel</button>
+            <h3 id="modalDateTitle" style="margin-bottom:1rem; text-align: center;"></h3>
+            <div class="current-status" id="modalStatusArea"></div>
+            <div>
+                <select id="modalType" class="form-input">
+                    <option value="dropoff">Morning Dropoff</option>
+                    <option value="pickup">Afternoon Pickup</option>
+                </select>
+                <input type="text" id="modalName" class="form-input" placeholder="Name">
+                <button class="btn btn-primary" onclick="handleSave()">Save</button>
+                <button class="btn" style="width:100%; margin-top:8px; background:#eee" onclick="closeModal()">Close</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyCD-MH83cfM6gBx7FiuuIaYlaJj6EAfY4E",
             authDomain: "school-planner-3b04b.firebaseapp.com",
@@ -134,23 +124,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- APP STATE ---
-        let schedule = {};
-        let people = {};
-        let currentDate = new Date();
-        let selectedDate = null;
-        let lastNotifSentDate = ""; // Prevents duplicate notifications within the same minute
-        const PERSON_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
+        let schedule = {}, people = {}, currentDate = new Date(), selectedDateKey = null, activeHighlight = null;
+        const COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
 
-        // --- REAL-TIME SYNC ---
         db.ref('/').on('value', (snapshot) => {
             const data = snapshot.val() || {};
             schedule = data.schedule || {};
             people = data.people || {};
             renderCalendar();
+            renderLegend();
+            if(selectedDateKey) updateModalView();
         });
 
-        // --- RENDERING ---
+        function renderLegend() {
+            const area = document.getElementById('legendArea');
+            let html = '<span style="font-size:0.7rem; color:#666; width:100%; margin-bottom:5px">TAP TO HIGHLIGHT:</span>';
+            Object.keys(people).forEach(name => {
+                const isActive = activeHighlight === name;
+                html += `<div class="legend-item ${isActive ? 'active' : ''}" 
+                             style="background:${people[name].color}${isActive ? '' : '20'}; color:${isActive ? 'white' : people[name].color}" 
+                             onclick="toggleHighlight('${name}')">${name}</div>`;
+            });
+            area.innerHTML = html;
+        }
+
+        function toggleHighlight(name) {
+            activeHighlight = (activeHighlight === name) ? null : name;
+            renderLegend();
+            renderCalendar();
+        }
+
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -160,14 +163,11 @@
             ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(d => html += `<div class="day-header">${d}</div>`);
             
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month, d);
                 const dayOfWeek = date.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
-                if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip Sat/Sun
-
-                // Alignment padding for start of month
                 if (d === 1 && dayOfWeek > 1) {
                     for(let p = 1; p < dayOfWeek; p++) html += '<div></div>';
                 }
@@ -175,100 +175,84 @@
                 const key = date.toISOString().split('T')[0];
                 const dayData = schedule[key] || {};
                 
-                let content = `<div class="day-number">${d}</div>`;
-                if (dayData.dropoff) content += renderBadge(dayData.dropoff, '↓', key, 'dropoff');
-                if (dayData.pickup) content += renderBadge(dayData.pickup, '↑', key, 'pickup');
-                
-                if (!dayData.dropoff || !dayData.pickup) {
-                    content += '<div class="badge"><div class="missing-dot"></div></div>';
+                // Highlighting Logic
+                let highlightClass = '';
+                if (activeHighlight) {
+                    const isAssigned = (dayData.dropoff === activeHighlight || dayData.pickup === activeHighlight);
+                    highlightClass = isAssigned ? 'highlighted' : 'dimmed';
                 }
 
-                html += `<div class="day-cell clickable" onclick="openAddModal('${key}')">${content}</div>`;
+                let content = `<div class="day-number">${d}</div>`;
+                content += renderRow(dayData.dropoff, '↓');
+                content += renderRow(dayData.pickup, '↑');
+                
+                if (!dayData.dropoff || !dayData.pickup) content += '<div class="badge"><div class="missing-dot"></div></div>';
+
+                html += `<div class="day-cell clickable ${highlightClass}" onclick="openModal('${key}')">${content}</div>`;
             }
             document.getElementById('calendar').innerHTML = html;
         }
 
-        function renderBadge(name, icon, key, type) {
+        function renderRow(name, icon) {
+            if (!name) return `<div style="height:32px"></div>`;
             const color = people[name]?.color || '#667eea';
-            return `<div class="assignment" style="background:${color}15; color:${color}; border-left: 2px solid ${color}">
-                <span class="assignment-name">${icon} ${name}</span>
-                <span onclick="removePerson(event,'${key}','${type}')" class="remove-btn">×</span>
-            </div>`;
+            return `<div class="assignment" style="background:${color}10; color:${color}; border-color:${color}">
+                        <div class="name-label">${icon} ${name}</div>
+                    </div>`;
         }
 
-        // --- NOTIFICATION LOGIC ---
-        function requestNotifPermission() {
-            if ("Notification" in window) {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") alert("Notifications enabled!");
-                });
+        function openModal(key) {
+            selectedDateKey = key;
+            document.getElementById('modalDateTitle').textContent = new Date(key).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' });
+            updateModalView();
+            document.getElementById('dayModal').classList.add('show');
+        }
+
+        function updateModalView() {
+            const dayData = schedule[selectedDateKey] || {};
+            document.getElementById('modalStatusArea').innerHTML = `
+                <div class="status-row"><span><strong>Drop:</strong> ${dayData.dropoff || '---'}</span>${dayData.dropoff ? `<span onclick="remove('dropoff')" style="color:red">✕</span>` : ''}</div>
+                <div class="status-row"><span><strong>Pick:</strong> ${dayData.pickup || '---'}</span>${dayData.pickup ? `<span onclick="remove('pickup')" style="color:red">✕</span>` : ''}</div>`;
+        }
+
+        function handleSave() {
+            const name = document.getElementById('modalName').value.trim();
+            const type = document.getElementById('modalType').value;
+            if (!name) return;
+            if (!schedule[selectedDateKey]) schedule[selectedDateKey] = {};
+            schedule[selectedDateKey][type] = name;
+            if (!people[name]) {
+                const used = Object.values(people).map(p => p.color);
+                people[name] = { color: COLORS.find(c => !used.includes(c)) || COLORS[0] };
             }
+            db.ref('/').set({ schedule, people });
+            document.getElementById('modalName').value = '';
+        }
+
+        function remove(type) {
+            delete schedule[selectedDateKey][type];
+            db.ref('/').set({ schedule, people });
         }
 
         function checkForReminders() {
             const now = new Date();
-            const currentHour = now.getHours();
-            const currentMin = now.getMinutes();
-            const todayStr = now.toISOString().split('T')[0];
-
-            // Trigger at 7:00 PM (19:00)
-            if (currentHour === 19 && currentMin === 0 && lastNotifSentDate !== todayStr) {
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                
-                // Only remind for weekdays
-                if (tomorrow.getDay() !== 0 && tomorrow.getDay() !== 6) {
-                    const tomorrowKey = tomorrow.toISOString().split('T')[0];
-                    const dayData = schedule[tomorrowKey] || {};
-
-                    if (!dayData.dropoff || !dayData.pickup) {
-                        lastNotifSentDate = todayStr;
-                        const msg = `⚠️ Slot empty for tomorrow! ${!dayData.dropoff ? 'Dropoff' : ''} ${!dayData.dropoff && !dayData.pickup ? '&' : ''} ${!dayData.pickup ? 'Pickup' : ''} needs a name.`;
-                        
-                        if (Notification.permission === "granted") {
-                            new Notification("School Planner Reminder", { body: msg, icon: "📅" });
-                        } else {
-                            alert(msg);
-                        }
+            if (now.getHours() === 19 && now.getMinutes() === 0) {
+                const tom = new Date(); tom.setDate(tom.getDate() + 1);
+                if (tom.getDay() !== 0 && tom.getDay() !== 6) {
+                    const key = tom.toISOString().split('T')[0];
+                    if (!schedule[key]?.dropoff || !schedule[key]?.pickup) {
+                        new Notification("Family Planner", { body: "⚠️ Unassigned slot for tomorrow!" });
                     }
                 }
             }
         }
 
-        // Run check every 30 seconds
-        setInterval(checkForReminders, 30000);
-
-        // --- ACTIONS ---
-        function openAddModal(key) { selectedDate = key; document.getElementById('addModal').classList.add('show'); }
-        function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
-
-        function addPerson() {
-            const name = document.getElementById('personName').value.trim();
-            const type = document.querySelector('input[name="scheduleType"]:checked').value;
-            if (!name) return;
-            if (!schedule[selectedDate]) schedule[selectedDate] = {};
-            schedule[selectedDate][type] = name;
-            
-            if (!people[name]) {
-                const used = Object.values(people).map(p => p.color);
-                people[name] = { color: PERSON_COLORS.find(c => !used.includes(c)) || PERSON_COLORS[0] };
-            }
-            db.ref('/').set({ schedule, people });
-            closeAddModal();
-            document.getElementById('personName').value = '';
-        }
-
-        function removePerson(e, key, type) {
-            e.stopPropagation();
-            delete schedule[key][type];
-            db.ref('/').set({ schedule, people });
-        }
-
+        setInterval(checkForReminders, 60000);
+        function closeModal() { document.getElementById('dayModal').classList.remove('show'); selectedDateKey = null; }
         function previousMonth() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
         function nextMonth() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
+        function requestNotifPermission() { Notification.requestPermission(); }
         function shareApp() { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
-
-        renderCalendar();
     </script>
 </body>
 </html>
