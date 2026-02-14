@@ -14,7 +14,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 0.5rem; /* Slightly reduced for mobile */
+            padding: 0.5rem;
         }
         .container { max-width: 1200px; margin: 0 auto; width: 100%; }
         .glass-card { 
@@ -22,7 +22,7 @@
             border-radius: 20px; 
             box-shadow: 0 8px 32px rgba(0,0,0,0.1);
             backdrop-filter: blur(10px);
-            padding: 1.25rem; /* Optimized for mobile */
+            padding: 1.25rem;
             margin-bottom: 1rem; 
         }
         .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
@@ -37,7 +37,6 @@
         .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .month-title { font-size: 1.4rem; font-weight: 800; color: #1F2937; }
         
-        /* Updated to 5 columns for Weekdays Only */
         .calendar-grid { 
             display: grid; 
             grid-template-columns: repeat(5, 1fr); 
@@ -46,29 +45,31 @@
         }
         .day-header { text-align: center; font-weight: 700; color: #6B7280; padding: 0.5rem 0; font-size: 0.7rem; text-transform: uppercase; }
         .day-cell { 
-            min-height: 7rem; 
+            min-height: 7.5rem; 
             border: 2px solid #E5E7EB; 
             border-radius: 12px; 
             padding: 0.4rem; 
             position: relative; 
             background: white;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         .day-cell.clickable { cursor: pointer; }
-        .day-cell.holiday { background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-color: #FB923C; }
         .day-number { font-weight: 700; color: #1F2937; margin-bottom: 0.3rem; font-size: 1rem; }
+        
         .assignment { border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; margin-bottom: 0.3rem; display: flex; justify-content: space-between; align-items: center; }
         .assignment-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .remove-btn { cursor: pointer; font-size: 1rem; padding-left: 2px; }
+        
         .badge { position: absolute; top: 0.4rem; right: 0.4rem; }
-        .missing-dot { width: 8px; height: 8px; background: #EF4444; border-radius: 50%; }
+        .missing-dot { width: 8px; height: 8px; background: #EF4444; border-radius: 50%; box-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
 
-        /* Modals */
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; padding: 1rem; z-index: 100; backdrop-filter: blur(4px); }
         .modal.show { display: flex; }
         .modal-content { background: white; border-radius: 20px; padding: 1.5rem; width: 100%; max-width: 350px; }
         .form-group { margin-bottom: 1rem; }
-        .form-input { width: 100%; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 10px; }
+        .form-input { width: 100%; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 10px; font-size: 1rem; }
         .radio-group { display: flex; flex-direction: column; gap: 0.5rem; }
         .radio-label { display: flex; align-items: center; padding: 0.75rem; border: 2px solid #E5E7EB; border-radius: 10px; font-size: 0.9rem; }
         .radio-label input { margin-right: 0.5rem; }
@@ -80,12 +81,12 @@
             <div class="header">
                 <div class="title">📅 School Planner</div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" onclick="openSettings()">🔔</button>
+                    <button class="btn btn-primary" onclick="requestNotifPermission()">🔔</button>
                     <button class="btn btn-secondary" onclick="shareApp()">📤 Share</button>
                 </div>
             </div>
             <div class="info-box">
-                <strong>Instant Sync:</strong> Weekdays only. Click a day to assign.
+                <strong>Instant Sync:</strong> Changes update across all family devices. 7 PM reminders active for unassigned slots.
             </div>
         </div>
 
@@ -96,13 +97,12 @@
                 <button class="btn btn-gray" onclick="nextMonth()">→</button>
             </div>
             <div class="calendar-grid" id="calendar"></div>
-            <div id="peopleSection" style="margin-top:1rem;"></div>
         </div>
     </div>
 
     <div class="modal" id="addModal">
         <div class="modal-content">
-            <h3 style="margin-bottom:1rem;">Assign Pickup/Dropoff</h3>
+            <h3 style="margin-bottom:1rem; color: #1F2937;">Assign Role</h3>
             <div class="form-group">
                 <div class="radio-group">
                     <label class="radio-label"><input type="radio" name="scheduleType" value="dropoff" checked> Dropoff (8 AM)</label>
@@ -110,7 +110,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <input type="text" id="personName" class="form-input" placeholder="Name">
+                <input type="text" id="personName" class="form-input" placeholder="Enter Name">
             </div>
             <div class="button-group" style="display:flex; gap:0.5rem;">
                 <button class="btn btn-primary" style="flex:1" onclick="addPerson()">Add</button>
@@ -120,6 +120,7 @@
     </div>
 
     <script>
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyCD-MH83cfM6gBx7FiuuIaYlaJj6EAfY4E",
             authDomain: "school-planner-3b04b.firebaseapp.com",
@@ -133,12 +134,15 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // --- APP STATE ---
         let schedule = {};
         let people = {};
         let currentDate = new Date();
         let selectedDate = null;
+        let lastNotifSentDate = ""; // Prevents duplicate notifications within the same minute
         const PERSON_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
 
+        // --- REAL-TIME SYNC ---
         db.ref('/').on('value', (snapshot) => {
             const data = snapshot.val() || {};
             schedule = data.schedule || {};
@@ -146,6 +150,7 @@
             renderCalendar();
         });
 
+        // --- RENDERING ---
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -155,18 +160,15 @@
             ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(d => html += `<div class="day-header">${d}</div>`);
             
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun, 1=Mon...
 
-            // To align Mon-Fri, we find the first Monday or the day offset
-            // We skip Saturday (6) and Sunday (0)
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(year, month, d);
                 const dayOfWeek = date.getDay();
 
-                if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip Weekends
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip Sat/Sun
 
-                // Padding for the very first week of the month
-                if (d === 1 && dayOfWeek > 1 && dayOfWeek < 6) {
+                // Alignment padding for start of month
+                if (d === 1 && dayOfWeek > 1) {
                     for(let p = 1; p < dayOfWeek; p++) html += '<div></div>';
                 }
 
@@ -174,15 +176,69 @@
                 const dayData = schedule[key] || {};
                 
                 let content = `<div class="day-number">${d}</div>`;
-                if (dayData.dropoff) content += `<div class="assignment" style="background:${people[dayData.dropoff]?.color}20; color:${people[dayData.dropoff]?.color}"><span class="assignment-name">↓ ${dayData.dropoff}</span><span onclick="removePerson(event,'${key}','dropoff')" class="remove-btn">×</span></div>`;
-                if (dayData.pickup) content += `<div class="assignment" style="background:${people[dayData.pickup]?.color}20; color:${people[dayData.pickup]?.color}"><span class="assignment-name">↑ ${dayData.pickup}</span><span onclick="removePerson(event,'${key}','pickup')" class="remove-btn">×</span></div>`;
-                if (!dayData.dropoff || !dayData.pickup) content += '<div class="badge"><div class="missing-dot"></div></div>';
+                if (dayData.dropoff) content += renderBadge(dayData.dropoff, '↓', key, 'dropoff');
+                if (dayData.pickup) content += renderBadge(dayData.pickup, '↑', key, 'pickup');
+                
+                if (!dayData.dropoff || !dayData.pickup) {
+                    content += '<div class="badge"><div class="missing-dot"></div></div>';
+                }
 
                 html += `<div class="day-cell clickable" onclick="openAddModal('${key}')">${content}</div>`;
             }
             document.getElementById('calendar').innerHTML = html;
         }
 
+        function renderBadge(name, icon, key, type) {
+            const color = people[name]?.color || '#667eea';
+            return `<div class="assignment" style="background:${color}15; color:${color}; border-left: 2px solid ${color}">
+                <span class="assignment-name">${icon} ${name}</span>
+                <span onclick="removePerson(event,'${key}','${type}')" class="remove-btn">×</span>
+            </div>`;
+        }
+
+        // --- NOTIFICATION LOGIC ---
+        function requestNotifPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") alert("Notifications enabled!");
+                });
+            }
+        }
+
+        function checkForReminders() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+            const todayStr = now.toISOString().split('T')[0];
+
+            // Trigger at 7:00 PM (19:00)
+            if (currentHour === 19 && currentMin === 0 && lastNotifSentDate !== todayStr) {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                // Only remind for weekdays
+                if (tomorrow.getDay() !== 0 && tomorrow.getDay() !== 6) {
+                    const tomorrowKey = tomorrow.toISOString().split('T')[0];
+                    const dayData = schedule[tomorrowKey] || {};
+
+                    if (!dayData.dropoff || !dayData.pickup) {
+                        lastNotifSentDate = todayStr;
+                        const msg = `⚠️ Slot empty for tomorrow! ${!dayData.dropoff ? 'Dropoff' : ''} ${!dayData.dropoff && !dayData.pickup ? '&' : ''} ${!dayData.pickup ? 'Pickup' : ''} needs a name.`;
+                        
+                        if (Notification.permission === "granted") {
+                            new Notification("School Planner Reminder", { body: msg, icon: "📅" });
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Run check every 30 seconds
+        setInterval(checkForReminders, 30000);
+
+        // --- ACTIONS ---
         function openAddModal(key) { selectedDate = key; document.getElementById('addModal').classList.add('show'); }
         function closeAddModal() { document.getElementById('addModal').classList.remove('show'); }
 
@@ -192,6 +248,7 @@
             if (!name) return;
             if (!schedule[selectedDate]) schedule[selectedDate] = {};
             schedule[selectedDate][type] = name;
+            
             if (!people[name]) {
                 const used = Object.values(people).map(p => p.color);
                 people[name] = { color: PERSON_COLORS.find(c => !used.includes(c)) || PERSON_COLORS[0] };
@@ -210,7 +267,8 @@
         function previousMonth() { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); }
         function nextMonth() { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); }
         function shareApp() { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); }
-        function openSettings() { alert("Notification settings saved to this device."); }
+
+        renderCalendar();
     </script>
 </body>
 </html>
